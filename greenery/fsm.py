@@ -362,7 +362,7 @@ class fsm:
 				i += 1
 			return False
 
-		livestates = set([state for state in self.states if islive(state)])
+		livestates = set(state for state in self.states if islive(state))
 
 		# We store a list of tuples. Each tuple consists of an input string and the
 		# state that this input string leads to. This means we don't have to run the
