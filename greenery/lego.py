@@ -309,11 +309,11 @@ class charclass(lego):
 
 	# these are the character ranges which can be used inside square brackets e.g.
 	# "[a-z]", "[F-J]". These ranges should be disjoint.
-	allowableRanges = {
+	allowableRanges = set([
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 		"abcdefghijklmnopqrstuvwxyz",
 		"0123456789",
-	}
+	])
 
 	# Shorthand codes for use inside charclasses e.g. [abc\d]
 	w = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
@@ -425,7 +425,7 @@ class charclass(lego):
 				1: dict([(symbol, 2) for symbol in alphabet]),
 				2: dict([(symbol, 2) for symbol in alphabet]),
 			}
-		
+
 		# If normal, make a singular FSM accepting only these characters
 		else:
 			map = {
@@ -436,9 +436,9 @@ class charclass(lego):
 
 		return fsm(
 			alphabet = alphabet,
-			states   = {0, 1, 2},
+			states   = set([0, 1, 2]),
 			initial  = 0,
-			finals   = {1},
+			finals   = set([1]),
 			map      = map,
 		)
 
@@ -462,7 +462,7 @@ class charclass(lego):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		return {otherchars} | self.chars
+		return set([otherchars]) | self.chars
 
 	def empty(self):
 		return len(self.chars) == 0 and self.negated == False
@@ -997,8 +997,8 @@ class mult(lego):
 		return conc(self) & other
 
 	def alphabet(self):
-		return {otherchars} | self.multiplicand.alphabet()
-	
+		return set([otherchars]) | self.multiplicand.alphabet()
+
 	def empty(self):
 		return self.multiplicand.empty() and self.multiplier.min > bound(0)
 
@@ -1018,7 +1018,7 @@ class mult(lego):
 			and self.multiplier.canmultiplyby(qm):
 				return mult(
 					pattern(
-						*self.multiplicand.concs.difference({emptystring})
+						*self.multiplicand.concs.difference(set(emptystring))
 					),
 					self.multiplier * qm,
 				)
@@ -1041,7 +1041,7 @@ class mult(lego):
 		# no point multiplying in the singular
 		if self.multiplier == one:
 			return self.multiplicand
-	
+
 		# Try recursively reducing our internal.
 		reduced = self.multiplicand.reduce()
 		# "bulk up" smaller lego pieces to pattern if need be
@@ -1076,7 +1076,7 @@ class mult(lego):
 		if hasattr(self.multiplicand, "concs"):
 			output = "(" + str(self.multiplicand) + ")"
 
-		else: 
+		else:
 			output = str(self.multiplicand)
 
 		suffix = str(self.multiplier)
@@ -1257,7 +1257,7 @@ class conc(lego):
 		return fsm1
 
 	def alphabet(self):
-		return {otherchars}.union(*[m.alphabet() for m in self.mults])
+		return set([otherchars]).union(*[m.alphabet() for m in self.mults])
 
 	def empty(self):
 		for m in self.mults:
@@ -1287,14 +1287,14 @@ class conc(lego):
 			"ZYAA, ZYBB" -> "ZY"
 			"CZ, CZ" -> "CZ"
 			"YC, ZC" -> ""
-			
+
 			With the "suffix" flag set, works from the end. E.g.:
 			"AAZY, BBZY" -> "ZY"
 			"CZ, CZ" -> "CZ"
 			"CY, CZ" -> ""
 		'''
 		mults = []
-		
+
 		indices = range(min(len(self.mults), len(other.mults))) # e.g. [0, 1, 2, 3]
 
 		# Work backwards from the end of both concs instead.
@@ -1328,7 +1328,7 @@ class conc(lego):
 			This is the opposite of concatenation. For example, if ABC + DEF = ABCDEF,
 			then logically ABCDEF - DEF = ABC.
 		'''
-		
+
 		# e.g. self has mults at indices [0, 1, 2, 3, 4, 5, 6] len=7
 		# e.g. other has mults at indices [0, 1, 2] len=3
 		new = list(self.mults)
@@ -1369,7 +1369,7 @@ class pattern(lego):
 		containing no possibilities is possible and represents a regular expression
 		matching no strings whatsoever (there is no conventional string form for
 		this).
-		
+
 		e.g. "abc|def(ghi|jkl)" is an alt containing two concs: "abc" and
 		"def(ghi|jkl)". The latter is a conc containing four mults: "d", "e", "f"
 		and "(ghi|jkl)". The latter in turn is a mult consisting of an upper bound
@@ -1408,7 +1408,7 @@ class pattern(lego):
 		return mult(self, one) + other
 
 	def alphabet(self):
-		return {otherchars}.union(*[c.alphabet() for c in self.concs])
+		return set([otherchars]).union(*[c.alphabet() for c in self.concs])
 
 	def empty(self):
 		for c in self.concs:
@@ -1420,7 +1420,7 @@ class pattern(lego):
 	def __and__(self, other):
 		# A deceptively simple method for an astoundingly difficult operation
 		alphabet = self.alphabet() | other.alphabet()
-	
+
 		# Which means that we can build finite state machines sharing that alphabet
 		combined = self.fsm(alphabet) & other.fsm(alphabet)
 		return combined.lego()
@@ -1455,7 +1455,7 @@ class pattern(lego):
 		# If one of our internal concs is empty, remove it
 		for c in self.concs:
 			if c.empty():
-				new = self.concs - {c}
+				new = self.concs - set([c])
 				return pattern(*new)
 
 		# no point alternating among one possibility
@@ -1512,10 +1512,10 @@ class pattern(lego):
 					continue
 				m = c.mults[0]
 				if m.multiplier.min == bound(0):
-					rest = self.concs - {conc()}
+					rest = self.concs - set(conc())
 					return pattern(*rest)
 				if m.multiplier.min == bound(1):
-					rest = self.concs - {conc(), c} | {m * qm}
+					rest = self.concs - set([conc(), c]) | set([m * qm])
 					return pattern(*rest)
 
 		# If the present pattern's concs all have a common prefix, split
@@ -1747,7 +1747,7 @@ if __name__ == '__main__':
 		),
 		suffix=True
 	) == emptystring
-	
+
 	# Conc subtraction
 
 	# AZ - Z = A
@@ -1818,9 +1818,9 @@ if __name__ == '__main__':
 	)
 
 	# Odd bug with ([bc]*c)?[ab]*
-	int5A = mult(charclass("bc"), star).fsm({"a", "b", "c", otherchars})
+	int5A = mult(charclass("bc"), star).fsm(set(["a", "b", "c", otherchars]))
 	assert int5A.accepts("")
-	int5B = mult(charclass("c"), one).fsm({"a", "b", "c", otherchars})
+	int5B = mult(charclass("c"), one).fsm(set(["a", "b", "c", otherchars]))
 	assert int5B.accepts("c")
 	int5C = int5A + int5B
 	assert (int5A + int5B).accepts("c")
@@ -1875,7 +1875,7 @@ if __name__ == '__main__':
 	assert anota.accepts("ab")
 	assert not anota.accepts("ba")
 	assert not anota.accepts("bb")
-	
+
 	# "0\\d"
 	zeroD = pattern(
 		conc(
@@ -2367,7 +2367,7 @@ if __name__ == '__main__':
 		pass
 
 	# charclass set operations
-	
+
 	# charclass negation
 	assert ~~charclass("a") == charclass("a")
 	assert charclass("a") == ~~charclass("a")
@@ -3181,7 +3181,7 @@ if __name__ == '__main__':
 		mult(charclass("a"), one),
 		mult(charclass("a"), one),
 	)
-	
+
 	# (aa) - aa = ()
 	assert pattern(
 		conc(
@@ -3759,7 +3759,7 @@ if __name__ == '__main__':
 	assert str(parse("\\d{2}") & parse("19.*")) == "19"
 	assert str(parse("\\d{3}") & parse("19.*")) == "19\\d"
 	assert str(parse("abc...") & parse("...def")) == "abcdef"
-	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in {"([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"}
+	assert str(parse("[bc]*[ab]*") & parse("[ab]*[bc]*")) in set(["([ab]*a|[bc]*c)?b*", "b*(a[ab]*|c[bc]*)?"])
 	assert str(parse("\\W*") & parse("[a-g0-8$%\\^]+") & parse("[^d]{2,8}")) == "[$%\\^]{2,8}"
 	assert str(parse("\\d{4}-\\d{2}-\\d{2}") & parse("19.*")) == "19\\d\\d-\\d\\d-\\d\\d"
 
@@ -3780,14 +3780,14 @@ if __name__ == '__main__':
 	assert str(parse(".*") & parse(short).reduce()) == "[ab]*"
 
 	# DEFECT: "0{2}|1{2}" was erroneously reduced() to "[01]{2}"
-	bad = parse("0{2}|1{2}").fsm({"0", "1", otherchars})
+	bad = parse("0{2}|1{2}").fsm(set(["0", "1", otherchars]))
 	assert bad.accepts("00")
 	assert bad.accepts("11")
 	assert not bad.accepts("01")
 	assert str(parse("0|[1-9]|ab")) == "\d|ab"
 
 	# lego.alphabet() should include "otherchars"
-	assert parse("").alphabet() == {otherchars}
+	assert parse("").alphabet() == set([otherchars])
 
 	# You should be able to fsm() a single lego piece without supplying a specific
 	# alphabet. That should be determinable from context.
@@ -3823,7 +3823,7 @@ if __name__ == '__main__':
 	assert parse("|(ab)*|def").reduce() == parse("(ab)*|def")
 	assert parse("|(ab)+|def").reduce() == parse("(ab)*|def")
 	assert parse("|.+").reduce() == parse(".*")
-	assert parse("|a+|b+") in {parse("a+|b*"), parse("a*|b+")}
+	assert parse("|a+|b+") in set([parse("a+|b*"), parse("a*|b+")])
 
 	# Regex reversal
 	assert reversed(parse("b")) == parse("b")
