@@ -1018,7 +1018,7 @@ class mult(lego):
 			and self.multiplier.canmultiplyby(qm):
 				return mult(
 					pattern(
-						*self.multiplicand.concs.difference(set(emptystring))
+						*self.multiplicand.concs.difference(set([emptystring]))
 					),
 					self.multiplier * qm,
 				)
